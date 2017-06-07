@@ -2,6 +2,8 @@ import argparse
 
 from pythonosc import dispatcher
 from pythonosc import osc_server
+from pythonosc import osc_message_builder
+from pythonosc import udp_client
 
 import numpy as np
 
@@ -19,13 +21,19 @@ def nextpow2(i):
 def print_eeg(unused_addr, *args):
   global eegdata
   eegdata.append(args[0])
-  if len(eegdata) == 200:
-    winSampleLength = len(eegdata)
+  if len(eegdata) == 2000:
+    data = eegdata[:]
+    eegdata = eegdata[50:]
+
+    winSampleLength = len(data)
     NFFT = nextpow2(winSampleLength)
-    Y = np.fft.fft(eegdata, n=NFFT, axis=0)/winSampleLength
+    Y = np.fft.fft(data, n=NFFT, axis=0)/winSampleLength
     PSD = 2*np.abs(Y[0:int(NFFT/2)])
     print(PSD)
-    eegdata = eegdata[50:]
+
+    global client
+    client.send_message("/openbci/fft", PSD[0:250])
+
 
 
 
@@ -39,6 +47,9 @@ if __name__ == "__main__":
 
   dispatcher = dispatcher.Dispatcher()
   dispatcher.map("/openbci", print_eeg)
+
+  global client
+  client = udp_client.SimpleUDPClient("localhost", 12346)
 
   server = osc_server.ThreadingOSCUDPServer(
       (args.ip, args.port), dispatcher)
