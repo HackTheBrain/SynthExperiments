@@ -3,8 +3,31 @@ import argparse
 from pythonosc import dispatcher
 from pythonosc import osc_server
 
+import numpy as np
+
+eegdata = []
+
+def nextpow2(i):
+  """
+  Find the next power of 2 for number i
+  """
+  n = 1
+  while n < i:
+    n *= 2
+  return n
+
 def print_eeg(unused_addr, *args):
-  print(args)
+  global eegdata
+  eegdata.append(args[0])
+  if len(eegdata) == 200:
+    winSampleLength = len(eegdata)
+    NFFT = nextpow2(winSampleLength)
+    Y = np.fft.fft(eegdata, n=NFFT, axis=0)/winSampleLength
+    PSD = 2*np.abs(Y[0:int(NFFT/2)])
+    print(PSD)
+    eegdata = eegdata[50:]
+
+
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
